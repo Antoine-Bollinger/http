@@ -67,6 +67,8 @@ class Client
             'Content-Type: application/x-www-form-urlencoded',
         ], $params["headers"]));
 
+        curl_setopt($curl, CURLOPT_CAINFO, __DIR__ . "/cacert.pem");
+
         $response = curl_exec($curl);
 
         if (curl_errno($curl)) {
