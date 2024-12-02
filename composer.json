@@ -1,0 +1,21 @@
+{
+    "name": "abollinger/http",
+    "description": "A library to perform HTTP requests using curl.",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Abollinger\\Http\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Antoine Bollinger",
+            "email": "abollinger@partez.net"
+        }
+    ],
+    "require": {
+        "abollinger/helpers": "^1.2"
+    },
+    "version": "v1.0.0"
+}
