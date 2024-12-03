@@ -9,37 +9,50 @@
  */
 
 namespace Abollinger\Http;
+ 
+use Abollinger\Helpers;
 
-use \Abollinger\Helpers;
-
-class Client 
+/**
+ * HTTP Client for making GET and POST requests.
+ */
+class Client
 {
-    private $curl;
+    /** @var resource|null cURL handle */
+    private $curl = null;
 
+    /** @var string Default content type for requests */
+    private const DEFAULT_CONTENT_TYPE = "application/x-www-form-urlencoded";
 
+    /**
+     * Perform a GET request.
+     *
+     * @param array $params Request parameters (e.g., url, headers, data).
+     * @return array Response data or error.
+     */
     public static function get(
         array $params = []
     ) :array {
-        $params = Helpers::defaultParams([
-            "url" => "",
-            "headers" => []
-        ], $params);
-
         return self::request(array_merge($params, ["method" => "GET"]));
     }
 
+    /**
+     * Perform a POST request.
+     *
+     * @param array $params Request parameters (e.g., url, headers, data).
+     * @return array Response data or error.
+     */
     public static function post(
         array $params = []
     ) :array {
-        $params = Helpers::defaultParams([
-            "url" => "",
-            "data" => [],
-            "headers" => []
-        ], $params);
-
         return self::request(array_merge($params, ["method" => "POST"]));
     }
 
+    /**
+     * Perform an HTTP request.
+     *
+     * @param array $params Request parameters.
+     * @return array Response data or error.
+     */
     private static function request(
         array $params = []
     ) :array {
@@ -50,34 +63,77 @@ class Client
             "headers" => []
         ], $params);
 
-        $curl = curl_init($params["url"]);
+        $method = strtoupper($params["method"]);
+        if (!in_array($method, ["GET", "POST"], true)) {
+            return ["error" => "Invalid HTTP method", "code" => 400];
+        }
 
-        if (strtoupper($params["method"]) === "POST") {
-            curl_setopt($curl, CURLOPT_POST, true);
-            curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($params["data"]));
-        } elseif (strtoupper($params["method"]) === "GET") {
-            if (!empty($params["data"])) {
-                $urlWithParams = $params["url"] . '?' . http_build_query($params["data"]);
-                curl_setopt($curl, CURLOPT_URL, $urlWithParams);
+        $curl = curl_init();
+        if (!$curl) {
+            return ["error" => "Failed to initialize cURL", "code" => 500];
+        }
+
+        try {
+            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($curl, CURLOPT_HTTPHEADER, self::prepareHeaders($params["headers"]));
+            curl_setopt($curl, CURLOPT_CAINFO, __DIR__ . "/cacert.pem");
+
+            if ($method === "POST") {
+                curl_setopt($curl, CURLOPT_POST, true);
+                curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($params["data"]));
+            } elseif ($method === "GET" && !empty($params["data"])) {
+                $params["url"] .= "?" . http_build_query($params["data"]);
             }
+
+            curl_setopt($curl, CURLOPT_URL, $params["url"]);
+
+            $response = curl_exec($curl);
+            $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+            if (curl_errno($curl)) {
+                throw new \RuntimeException("cURL error: " . curl_error($curl), 500);
+            }
+
+            if ($httpCode < 200 || $httpCode >= 300) {
+                throw new \RuntimeException($response ?: "HTTP error", $httpCode);
+            }
+
+            return self::parseResponse($response);
+
+        } catch (\RuntimeException $e) {
+            return ["error" => $e->getMessage(), "code" => $e->getCode()];
+        } finally {
+            curl_close($curl);
         }
-
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array_merge([
-            'Content-Type: application/x-www-form-urlencoded',
-        ], $params["headers"]));
-
-        curl_setopt($curl, CURLOPT_CAINFO, __DIR__ . "/cacert.pem");
-
-        $response = curl_exec($curl);
-
-        if (curl_errno($curl)) {
-            return ["error" => "cURL error: " . curl_error($curl)];
-        } else {
-            $data = json_decode($response, true);
-            return $data;
-        }
-
-        curl_close($curl);
     }
-}
+
+    /**
+     * Prepare headers for the cURL request.
+     *
+     * @param array $headers Additional headers.
+     * @return array Merged headers.
+     */
+    private static function prepareHeaders(
+        array $headers
+    ) :array {
+        return array_merge(
+            ["Content-Type: " . self::DEFAULT_CONTENT_TYPE],
+            $headers
+        );
+    }
+
+    /**
+     * Parse and decode the response.
+     *
+     * @param string $response Raw response.
+     * @return array Parsed response data.
+     */
+    private static function parseResponse(
+        string $response
+    ) :array {
+        $decoded = json_decode($response, true);
+        return $decoded === null && json_last_error() !== JSON_ERROR_NONE
+            ? ["raw" => $response]
+            : $decoded;
+    }
+} 
