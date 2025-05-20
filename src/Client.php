@@ -80,7 +80,7 @@ class Client
 
             if ($method === "POST") {
                 curl_setopt($curl, CURLOPT_POST, true);
-                curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($params["data"]));
+                curl_setopt($curl, CURLOPT_POSTFIELDS, is_array($params["data"]) ? http_build_query($params["data"]) : $params["data"]);
             } elseif ($method === "GET" && !empty($params["data"])) {
                 $params["url"] .= "?" . http_build_query($params["data"]);
             }
