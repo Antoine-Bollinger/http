@@ -48,6 +48,30 @@ class Client
     }
 
     /**
+     * Perform a PUT request.
+     *
+     * @param array $params Request parameters (e.g., url, headers, data).
+     * @return array Response data or error.
+     */
+    public static function put(
+        array $params = []
+    ) :array {
+        return self::request(array_merge($params, ["method" => "PUT"]));
+    }
+
+    /**
+     * Perform a DELETE request.
+     *
+     * @param array $params Request parameters (e.g., url, headers, data).
+     * @return array Response data or error.
+     */
+    public static function delete(
+        array $params = []
+    ) :array {
+        return self::request(array_merge($params, ["method" => "DELETE"]));
+    }
+
+    /**
      * Perform an HTTP request.
      *
      * @param array $params Request parameters.
@@ -64,7 +88,7 @@ class Client
         ], $params);
 
         $method = strtoupper($params["method"]);
-        if (!in_array($method, ["GET", "POST"], true)) {
+        if (!in_array($method, ["GET", "POST", "PUT", "DELETE"], true)) {
             return ["error" => "Invalid HTTP method", "code" => 400];
         }
 
@@ -77,9 +101,9 @@ class Client
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($curl, CURLOPT_HTTPHEADER, self::prepareHeaders($params["headers"]));
             curl_setopt($curl, CURLOPT_CAINFO, __DIR__ . "/cacert.pem");
+            curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $method);
 
-            if ($method === "POST") {
-                curl_setopt($curl, CURLOPT_POST, true);
+            if (in_array($method, ["POST", "PUT", "DELETE"], true) && !empty($params["data"])) {
                 curl_setopt($curl, CURLOPT_POSTFIELDS, is_array($params["data"]) ? http_build_query($params["data"]) : $params["data"]);
             } elseif ($method === "GET" && !empty($params["data"])) {
                 $params["url"] .= "?" . http_build_query($params["data"]);
