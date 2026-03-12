@@ -18,16 +18,16 @@
 
 - PHP 7.4 or higher
 - cURL extension enabled
-- Composer autoloading (for `Helpers::defaultParams()`)
+- Composer autoloading
 
 ---
 
 ## Installation
 
-Include the class via Composer autoloading. Ensure the `Helpers` class is available in your project.
+Include the class via Composer autoloading. Install the Abollinger\Http package using composer. Run the following command: 
 
 ```bash
-composer require abollinger/helpers
+composer require abollinger/http
 ```
 
 Then, load the class in your code:
@@ -45,7 +45,7 @@ use Abollinger\Http\Client;
 ### Making a GET Request
 
 ```php
-\$response = Client::get([
+$response = Client::get([
     'url' => 'https://api.example.com/data',
     'headers' => ['Authorization' => 'Bearer token123']
 ]);
@@ -54,7 +54,7 @@ use Abollinger\Http\Client;
 ### Making a POST Request
 
 ```php
-\$response = Client::post([
+$response = Client::post([
     'url' => 'https://api.example.com/data',
     'data' => ['key' => 'value'],
     'headers' => ['Content-Type' => 'application/json']
@@ -64,7 +64,15 @@ use Abollinger\Http\Client;
 ### Retrieving Headers Only
 
 ```php
-\$headers = Client::getHeaders([
+$headers = Client::getHeaders([
+    'url' => 'https://api.example.com/data'
+]);
+```
+
+You can use this method to obtain normalized headers (example: "content type" becomes "Content-Type"):
+
+```php
+$headers = Client::getNormalizedHeaders([
     'url' => 'https://api.example.com/data'
 ]);
 ```
@@ -86,8 +94,8 @@ The response is always an associative array with the following structure:
 If the request fails, the response will include an `error` key:
 
 ```php
-if (isset(\$response['error'])) {
-    echo "Error: " . \$response['error'];
+if (isset($response['error'])) {
+    echo "Error: " . $response['error'];
 }
 ```
 
@@ -102,6 +110,9 @@ Performs a GET request. Returns the parsed response body.
 
 #### `getHeaders(array $params = []): array`
 Performs a GET request. Returns the parsed response headers.
+
+#### `getNormalizedHeaders(array $params = []): array`
+Performs a GET request. Normalize and returns the parsed response headers.
 
 #### `post(array $params = []): array`
 Performs a POST request. Returns the parsed response body.
@@ -127,44 +138,20 @@ All methods accept an associative array of parameters:
 
 ---
 
-### Private Methods
-
-#### `request(array $params = []): array`
-Internal method for performing the HTTP request and parsing the response.
-
-#### `prepareHeaders(array $headers): array`
-Merges default headers with custom headers.
-
-#### `parseHeaders(string $headerString): array`
-Parses raw HTTP headers into an associative array.
-
-#### `parseResponse(string $response): array`
-Parses the response body, attempting JSON decoding with fallback to raw output.
-
----
-
 ## Example Workflow
 
 ```php
 use Abollinger\Http\Client;
 
 // GET request
-\$data = Client::get(['url' => 'https://api.example.com/users']);
+$data = Client::get(['url' => 'https://api.example.com/users']);
 
 // POST request with custom headers
-\$result = Client::post([
+$result = Client::post([
     'url' => 'https://api.example.com/users',
     'data' => ['name' => 'John Doe'],
     'headers' => ['Authorization' => 'Bearer token123']
 ]);
-
-// Check for errors
-if (isset(\$result['error'])) {
-    throw new Exception(\$result['error']);
-}
-
-// Access response data
-print_r(\$result['body']);
 ```
 
 ---

@@ -48,6 +48,18 @@ class Client
     }
 
     /**
+     * Perform a GET request and return normalized headers.
+     *
+     * @param array $params Request parameters (e.g., url, headers, data).
+     * @return array Response headers or error.
+     */
+    public static function getNormalizedHeaders(
+        array $params = []
+    ) :array {
+        return self::request(array_merge($params, ["method" => "GET"]))["normalizedHeaders"];
+    }
+
+    /**
      * Perform a POST request.
      *
      * @param array $params Request parameters (e.g., url, headers, data).
@@ -141,12 +153,10 @@ class Client
 
             return [
                 "status" => $httpCode,
-                "headers" => self::parseHeaders($header),
+                "headers" => self::parseHeaders($header, false),
+                "normalizedHeaders" => self::parseHeaders($header),
                 "body" => self::parseResponse($body)
             ];
-
-            // return self::parseResponse($response);
-
         } catch (\RuntimeException $e) {
             return ["error" => $e->getMessage(), "code" => $e->getCode()];
         } finally {
@@ -176,16 +186,24 @@ class Client
      * @return array Parsed response headers.
      */
     private static function parseHeaders(
-        string $headerString
+        string $headerString,
+        bool $normalized = true
     ) :array {
         $headers = [];
         $lines = explode("\r\n", $headerString);
+
         foreach ($lines as $line) {
-            if (strpos($line, ":") !== false) {
-                list($key, $value) = explode(":", $line, 2);
-                $headers[trim($key)] = trim($value);
+            if (strpos($line, ":") === false) {
+                continue;
             }
+
+            list($key, $value) = explode(":", $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+            $normalizedKey = self::normalizeHeaderKey($key);
+            $headers[$normalized ? $normalizedKey : $key] = $value;
         }
+
         return $headers;
     }
 
@@ -202,5 +220,18 @@ class Client
         return $decoded === null && json_last_error() !== JSON_ERROR_NONE
             ? ["raw" => $response]
             : $decoded;
+    }
+
+    /**
+     * Normalize header key to standard format (e.g., "content type" -> "Content-Type").
+     *
+     * @param string $key Raw header key.
+     * @return string Normalized header key.
+     */
+    private static function normalizeHeaderKey(string $key): string
+    {
+        $parts = preg_split('/(?=[A-Z])|[-_\s]+/', $key);
+        $normalizedParts = array_map('ucfirst', array_map('strtolower', $parts));
+        return implode('-', $normalizedParts);
     }
 } 
