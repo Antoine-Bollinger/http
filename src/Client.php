@@ -204,6 +204,7 @@ class Client
             $headers[$normalized ? $normalizedKey : $key] = $value;
         }
 
+        ksort($headers);
         return $headers;
     }
 
